@@ -14,8 +14,8 @@ namespace ChangeExcelLineColor
         {
             var fileInfo = new FileInfo(filename);
             var newFileName = $"{fileInfo.Directory}\\FIXED_{fileInfo.Name}";
-            File.Copy(filename, newFileName, true);
-            using (var book = new XLWorkbook(newFileName))
+            //File.Copy(filename, newFileName, true);
+            using (var book = new XLWorkbook(filename))
             {
                 var theme = book.Theme;
                 foreach (var sheet in book.Worksheets)
@@ -23,11 +23,6 @@ namespace ChangeExcelLineColor
                     var printArea = sheet.PageSetup.PrintAreas.FirstOrDefault();
                     if (printArea == null) continue;
                     ChangeRanges(printArea, theme);
-                    //foreach (var printArea in sheet.PageSetup.PrintAreas)
-                    //{
-                    //    if (printArea == null) continue;
-                    //    ChangeRanges(printArea, theme);
-                    //}
                 }
                 book.SaveAs(newFileName);
             }
@@ -36,7 +31,7 @@ namespace ChangeExcelLineColor
 
         private static void ChangeRanges(IXLRange range, IXLTheme theme)
         {
-            foreach(var targetCell in range.Cells())
+            foreach (var targetCell in range.Cells())
             {
                 ChangeCell(targetCell, theme);
             }
@@ -44,38 +39,41 @@ namespace ChangeExcelLineColor
 
         private static void ChangeCell(IXLCell targetCell, IXLTheme theme)
         {
+            var setColor = XLColor.Black;
+            if (targetCell.Style.Font.FontColor.IsNonColored(theme))
+                targetCell.RichText.SetFontColor(setColor);
             if (targetCell.Style.Border.BottomBorder == XLBorderStyleValues.None)
             {
                 targetCell.Style.Border.BottomBorder = XLBorderStyleValues.Thin;
                 targetCell.Style.Border.BottomBorderColor = XLColor.White;
             }
             else if (targetCell.Style.Border.BottomBorderColor.IsNonColored(theme))
-                targetCell.Style.Border.BottomBorderColor = XLColor.Black;
+                targetCell.Style.Border.BottomBorderColor = setColor;
             if (targetCell.Style.Border.TopBorder == XLBorderStyleValues.None)
             {
                 targetCell.Style.Border.TopBorder = XLBorderStyleValues.Thin;
                 targetCell.Style.Border.TopBorderColor = XLColor.White;
             }
             else if (targetCell.Style.Border.TopBorderColor.IsNonColored(theme))
-                targetCell.Style.Border.TopBorderColor = XLColor.Black;
+                targetCell.Style.Border.TopBorderColor = setColor;
             if (targetCell.Style.Border.LeftBorder == XLBorderStyleValues.None)
             {
                 targetCell.Style.Border.LeftBorder = XLBorderStyleValues.Thin;
                 targetCell.Style.Border.LeftBorderColor = XLColor.White;
             }
             else if (targetCell.Style.Border.LeftBorderColor.IsNonColored(theme))
-                targetCell.Style.Border.LeftBorderColor = XLColor.Black;
+                targetCell.Style.Border.LeftBorderColor = setColor;
             if (targetCell.Style.Border.RightBorder == XLBorderStyleValues.None)
             {
                 targetCell.Style.Border.RightBorder = XLBorderStyleValues.Thin;
                 targetCell.Style.Border.RightBorderColor = XLColor.White;
             }
             else if (targetCell.Style.Border.RightBorderColor.IsNonColored(theme))
-                targetCell.Style.Border.RightBorderColor = XLColor.Black;
+                targetCell.Style.Border.RightBorderColor = setColor;
 
             if (targetCell.Style.Border.DiagonalBorder != XLBorderStyleValues.None &&
                 targetCell.Style.Border.DiagonalBorderColor.IsNonColored(theme))
-                targetCell.Style.Border.DiagonalBorderColor = XLColor.Black;
+                targetCell.Style.Border.DiagonalBorderColor = setColor;
         }
 
         private static bool IsNonColored(this XLColor xlColor, IXLTheme theme)
@@ -83,17 +81,30 @@ namespace ChangeExcelLineColor
             switch (xlColor.ColorType)
             {
                 case XLColorType.Color:
-                    return xlColor.ToString() == "00000000";
+                    return xlColor.ToString().IsBlack();
                 case XLColorType.Theme:
                     var xlThemeColor = theme.ResolveThemeColor(xlColor.ThemeColor).ToString();
-                    var black = XLColor.Black.ToString();
-                    return xlThemeColor == black;
+                    return xlThemeColor.IsBlack();
                 case XLColorType.Indexed:
                     var color = XLColor.IndexedColors[xlColor.Indexed];
-                    if (xlColor.Indexed >= 64) return true;
-                    break;
+                    return xlColor.Indexed >= 64;
             }
             return false;
+        }
+
+        private static bool IsBlack(this string color)
+        {
+            var black = new List<string>
+            {
+                XLColor.FromArgb(255, 255, 255).ToString(),
+                XLColor.Black.ToString(),
+                XLColor.FromArgb(00000000).ToString(),
+                XLColor.FromIndex(1).ToString(),
+                XLColor.FromName("Black").ToString()
+            };
+
+            return black.Contains(color);
+
         }
     }
 }
